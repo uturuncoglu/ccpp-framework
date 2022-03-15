@@ -711,10 +711,10 @@ end module {module}
                 # Write to body that calls the groups for this stage
                 if profile:
                     body += '''
-      call ESMF_TraceRegionEnter('{group_name}_{stage}')
+      call ESMF_TraceRegionEnter('{group_name}_{stage}_cap')
       ierr = {suite_name}_{group_name}_{stage}_cap({arguments})
       if (ierr/=0) return
-      call ESMF_TraceRegionExit('{group_name}_{stage}')
+      call ESMF_TraceRegionExit('{group_name}_{stage}_cap')
 '''.format(suite_name=self._name, group_name=group.name, stage=CCPP_STAGES[ccpp_stage], arguments=argument_list_group)
                 else:
                     body += '''
