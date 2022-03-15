@@ -661,7 +661,7 @@ end module {module}
     def arguments(self, value):
         self._arguments = value
 
-    def write(self, metadata_request, metadata_define, arguments, debug):
+    def write(self, metadata_request, metadata_define, arguments, debug, profile):
         """Create caps for all groups in the suite and for the entire suite
         (calling the group caps one after another). Add additional code for
         debugging if debug flag is True."""
@@ -674,8 +674,10 @@ end module {module}
         # and variable definitions for all groups into a suite argument list. This may
         # require adjusting the intent of the variables.
         module_use = ''
+        if profile:
+            module_use = '   use ESMF, only: ESMF_TraceRegionEnter, ESMF_TraceRegionExit\n'
         for group in self._groups:
-            group.write(metadata_request, metadata_define, arguments, debug)
+            group.write(metadata_request, metadata_define, arguments, debug, profile)
             for subroutine in group.subroutines:
                 module_use += '   use {m}, only: {s}\n'.format(m=group.module, s=subroutine)
             for ccpp_stage in CCPP_STAGES.keys():
@@ -707,7 +709,15 @@ end module {module}
                 argument_list_group = create_argument_list_wrapped_explicit(arguments_group)
 
                 # Write to body that calls the groups for this stage
-                body += '''
+                if profile:
+                    body += '''
+      call ESMF_TraceRegionEnter('{group_name}_{stage}')
+      ierr = {suite_name}_{group_name}_{stage}_cap({arguments})
+      if (ierr/=0) return
+      call ESMF_TraceRegionExit('{group_name}_{stage}')
+'''.format(suite_name=self._name, group_name=group.name, stage=CCPP_STAGES[ccpp_stage], arguments=argument_list_group)
+                else:
+                    body += '''
       ierr = {suite_name}_{group_name}_{stage}_cap({arguments})
       if (ierr/=0) return
 '''.format(suite_name=self._name, group_name=group.name, stage=CCPP_STAGES[ccpp_stage], arguments=argument_list_group)
@@ -893,7 +903,7 @@ end module {module}
         for key, value in kwargs.items():
             setattr(self, "_"+key, value)
 
-    def write(self, metadata_request, metadata_define, arguments, debug):
+    def write(self, metadata_request, metadata_define, arguments, debug, profile):
         """Create caps for all stages of this group. Add additional code for
         debugging if debug flag is True."""
 
@@ -912,6 +922,8 @@ end module {module}
         ccpp_error_msg_target_name = metadata_request[CCPP_ERROR_MSG_VARIABLE][0].target
         #
         module_use = ''
+        if profile:
+            module_use = 'use ESMF, only: ESMF_TraceRegionEnter, ESMF_TraceRegionExit\n'
         self._module = 'ccpp_{suite}_{name}_cap'.format(name=self._name, suite=self._suite)
         self._filename = '{module_name}.F90'.format(module_name=self._module)
         self._subroutines = []
@@ -1433,7 +1445,18 @@ end module {module}
                             args += ' &\n                  '
                             length = 0
                     args = args.rstrip(',')
-                    subroutine_call = '''
+                    if profile:
+                        subroutine_call = '''
+{actions_before}
+
+      call ESMF_TraceRegionEnter('{subroutine_name}')
+      call {subroutine_name}({args})
+      call ESMF_TraceRegionExit('{subroutine_name}')
+
+{actions_after}
+'''.format(subroutine_name=subroutine_name, args=args, actions_before=actions_before.rstrip('\n'), actions_after=actions_after.rstrip('\n'))
+                    else:
+                        subroutine_call = '''
 {actions_before}
 
       call {subroutine_name}({args})

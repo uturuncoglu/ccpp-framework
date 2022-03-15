@@ -35,6 +35,7 @@ parser.add_argument('--verbose',    action='store_true', help='enable verbose ou
 parser.add_argument('--debug',      action='store_true', help='enable debugging features in auto-generated code', default=False)
 parser.add_argument('--suites',     action='store', help='suite definition files to use (comma-separated, without path)', default='')
 parser.add_argument('--builddir',   action='store', help='relative path to CCPP build directory', required=False, default=None)
+parser.add_argument('--profile',    action='store_true', help='add extra ESMF profile calls to auto-generated code', default=False)
 
 # BASEDIR is the current directory where this script is executed
 BASEDIR = os.getcwd()
@@ -56,7 +57,9 @@ def parse_arguments():
     else:
         sdfs = None
     builddir = args.builddir
-    return (success, configfile, clean, verbose, debug, sdfs, builddir)
+    profile = args.profile
+    logging.error('profile = {}'.format(profile))
+    return (success, configfile, clean, verbose, debug, sdfs, builddir, profile)
 
 def import_config(configfile, builddir):
     """Import the configuration from a given configuration file"""
@@ -470,7 +473,7 @@ def compare_metadata(metadata_define, metadata_request):
     modules = sorted(list(set(modules)))
     return (success, modules, metadata)
 
-def generate_suite_and_group_caps(suites, metadata_request, metadata_define, arguments, caps_dir, debug):
+def generate_suite_and_group_caps(suites, metadata_request, metadata_define, arguments, caps_dir, debug, profile):
     """Generate for the suite and for all groups parsed."""
     logging.info("Generating suite and group caps ...")
     suite_and_group_caps = []
@@ -479,7 +482,7 @@ def generate_suite_and_group_caps(suites, metadata_request, metadata_define, arg
     for suite in suites:
         logging.debug("Generating suite and group caps for suite {0}...".format(suite.name))
         # Write caps for suite and groups in suite
-        suite.write(metadata_request, metadata_define, arguments, debug)
+        suite.write(metadata_request, metadata_define, arguments, debug, profile)
         suite_and_group_caps += suite.caps
     os.chdir(BASEDIR)
     if suite_and_group_caps:
@@ -654,7 +657,7 @@ def generate_caps_makefile(caps, caps_makefile, caps_cmakefile, caps_sourcefile,
 def main():
     """Main routine that handles the CCPP prebuild for different host models."""
     # Parse command line arguments
-    (success, configfile, clean, verbose, debug, sdfs, builddir) = parse_arguments()
+    (success, configfile, clean, verbose, debug, sdfs, builddir, profile) = parse_arguments()
     if not success:
         raise Exception('Call to parse_arguments failed.')
 
@@ -734,7 +737,7 @@ def main():
 
     # Static build: generate caps for entire suite and groups in the specified suite; generate API
     (success, suite_and_group_caps) = generate_suite_and_group_caps(suites, metadata_request, metadata_define,
-                                                                    arguments_request, config['caps_dir'], debug)
+                                                                    arguments_request, config['caps_dir'], debug, profile)
     if not success:
         raise Exception('Call to generate_suite_and_group_caps failed.')
 
