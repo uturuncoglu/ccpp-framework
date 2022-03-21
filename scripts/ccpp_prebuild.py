@@ -58,7 +58,6 @@ def parse_arguments():
         sdfs = None
     builddir = args.builddir
     profile = args.profile
-    logging.error('profile = {}'.format(profile))
     return (success, configfile, clean, verbose, debug, sdfs, builddir, profile)
 
 def import_config(configfile, builddir):

@@ -711,10 +711,14 @@ end module {module}
                 # Write to body that calls the groups for this stage
                 if profile:
                     body += '''
+      !$omp master
       call ESMF_TraceRegionEnter('{group_name}_{stage}_cap')
+      !$omp end master
       ierr = {suite_name}_{group_name}_{stage}_cap({arguments})
       if (ierr/=0) return
+      !$omp master
       call ESMF_TraceRegionExit('{group_name}_{stage}_cap')
+      !$omp end master
 '''.format(suite_name=self._name, group_name=group.name, stage=CCPP_STAGES[ccpp_stage], arguments=argument_list_group)
                 else:
                     body += '''
@@ -923,7 +927,7 @@ end module {module}
         #
         module_use = ''
         if profile:
-            module_use = 'use ESMF, only: ESMF_TraceRegionEnter, ESMF_TraceRegionExit\n'
+            module_use = '   use ESMF, only: ESMF_TraceRegionEnter, ESMF_TraceRegionExit\n'
         self._module = 'ccpp_{suite}_{name}_cap'.format(name=self._name, suite=self._suite)
         self._filename = '{module_name}.F90'.format(module_name=self._module)
         self._subroutines = []
@@ -1449,9 +1453,13 @@ end module {module}
                         subroutine_call = '''
 {actions_before}
 
+      !$omp master 
       call ESMF_TraceRegionEnter('{subroutine_name}')
+      !$omp end master
       call {subroutine_name}({args})
+      !$omp master
       call ESMF_TraceRegionExit('{subroutine_name}')
+      !$omp end master
 
 {actions_after}
 '''.format(subroutine_name=subroutine_name, args=args, actions_before=actions_before.rstrip('\n'), actions_after=actions_after.rstrip('\n'))
